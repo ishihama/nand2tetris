@@ -39,5 +39,37 @@ CHIP CPU {
         pc[15];          // address of next instruction
 
     PARTS:
-    // Put your code here:
+    // decode instruction
+    // f ed c ba9876 543 210
+    // i xx a cccccc ddd jjj
+
+    Not(in=instruction[15], out=instA);
+    Not(in=instA, out=instC);
+    And(a=instC, b=instruction[3], out=writeM);
+    And(a=instC, b=instruction[4], out=loadD);
+    DRegister(in=outALU, load=loadD, out=outD);
+    And(a=instC, b=instruction[5], out=destA);
+    Mux16(a=instruction, b=outALU, sel=destA, out=inA);
+    Or(a=instA, b=destA, out=loadA);
+    ARegister(in=inA, load=loadA, out=outA);
+
+    Mux16(a=outA, b=inM, sel=instruction[12], out=outAM);
+
+    ALU(x=outD, y=outAM, zx=instruction[11], nx=instruction[10],
+        zy=instruction[9], ny=instruction[8], f=instruction[7], no=instruction[6],
+        out=outALU, zr=zr, ng=ng);
+
+    Or16(a=false, b=outA, out[0..14]=addressM);
+    Or16(a=false, b=outALU, out=outM);
+
+    And(a=zr, b=instruction[1], out=JEQ);
+    And(a=ng, b=instruction[2], out=JLT);
+    Or(a=zr, b=ng, out=orzrng);
+    Not(in=orzrng, out=pos);
+    And(a=pos, b=instruction[0], out=JGT);
+    Or(a=JEQ, b=JLT, out=JLE);
+    Or(a=JLE, b=JGT, out=JMP);
+    And(a=instC, b=JMP, out=loadPC);
+    Not(in=loadPC, out=inc);
+    PC(in=outA, inc=inc, load=loadPC, reset=reset, out[0..14]=pc);
 }
